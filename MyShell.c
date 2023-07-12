@@ -1,5 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <string.h>
 
 int contrlc(char c){
 	if ((c=='&')||(c=='|')||(c==';')||(c=='>')||(c=='<')||(c=='(')||(c==')'))
@@ -9,6 +13,7 @@ int contrlc(char c){
 }
 int main(int argc, char *argv[]){
 	FILE* inp=stdin;
+	char* home=getenv("HOME");
 	if(argc>1){
 		if (!(inp=fopen(argv[1], "r"))){
 			printf("Cannot open input file.\n");
@@ -16,6 +21,7 @@ int main(int argc, char *argv[]){
 		}
 	}
 	int c, lw=10, i;
+	printf("$");
 	while ((c=fgetc(inp))!=EOF){
 		char** str;
 		int nw=1;
@@ -72,13 +78,37 @@ int main(int argc, char *argv[]){
 				
 			}
 		}
-		for(i=0; i<nw-1; i++)
-			printf("%s\n", str[i]);
+		str[nw-1]=NULL;
+		if(str[0]){
+			if(strcmp(str[0], "cd")){
+				i=0;
+				int pid;
+				if((pid=fork())==0){
+					execvp(str[0], str);
+					perror("ошибка");
+					return 1;
+				};
+				int status;
+				wait(&status);
+				if(pid==-1){
+					perror("ошибка");
+					return 1;
+				}
+			}else{
+				if (str[1]==NULL)
+					chdir(home);
+				else 
+					if (chdir(str[1])==-1)
+						perror("ошибка");
+			}
+		}
 		for (i=0; i<nw-1; i++)
 			free(str[i]);
 		free(str);
+		printf("$");
 	}
 	if (inp!=stdin)
 		fclose(inp);
+		
 	return 0;
 }
