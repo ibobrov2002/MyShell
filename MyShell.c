@@ -20,16 +20,27 @@ int conv(char** str, int f0, int f1){
 		return 1;
 	};
 	int i=0, pr=0, status;
-	for(;str[i]!=NULL;){
+	char* cc=NULL;
+	for(;(str[i]!=NULL);){
 		int j=0, knc=1, knc2;
-		for(;((str[i]!=NULL)&&(str[i][0]!='|'));i++,j++);
+		for(;((str[i]!=NULL)&&(contrlc(str[i][0])));i++,j++);
+		if ((str[i]!=NULL)&&((str[i][0]=='&')||(str[i][0]==';')||(str[i][0]=='(')||(str[i][0]==')')||(!(strcmp(str[i], "||"))))){
+			cc=(char*)malloc(3);
+			cc[0]=str[i][0];
+			if ((cc[1]=str[i][1])!=0)
+				cc[2]=0;
+		}
 		knc2=i-j;
-		if(str[i]){
+		if((str[i]!=NULL)&&(str[i][0]=='|')&&(strcmp(str[i], "||"))){
 			free(str[i]);
-			str[i] = NULL;
+			str[i]=NULL;
 			i++;
 		}else{
 			knc=0;
+			if (str[i]){
+				free(str[i]);
+				str[i]=NULL;
+			}
 		}
 		pipe(fd);
 		pr++;
@@ -57,9 +68,11 @@ int conv(char** str, int f0, int f1){
 				close(fd[1]);
 			}
 	}
+	if (cc)
+		str[i]=cc;
 	close(f0);
-	waitpid(p, &status, 0);
-	return 0;
+	for(i=0;i<pr; i++, wait(&status));
+	return status;
 }
 int main(int argc, char *argv[]){
 	FILE* inp=stdin;
@@ -70,7 +83,7 @@ int main(int argc, char *argv[]){
 			return 1;
 		}
 	}
-	int c, lw=10, i, lp=2, status;
+	int c, lw=10, i, lp=2, status=777;
 	int* pid=(int*)malloc(sizeof(int)*10);
 	printf("$");
 	while ((c=fgetc(inp))!=EOF){
@@ -126,7 +139,6 @@ int main(int argc, char *argv[]){
 				}
 				nw++;
 				str=(char**)realloc(str,sizeof(char*)*nw);
-				
 			}
 		}
 		int f0=-1, f1=-1;
@@ -134,41 +146,9 @@ int main(int argc, char *argv[]){
 		if(str[0]){
 			if(strcmp(str[0], "cd")){
 				int i=0;
-				if (!(contrlc(str[i][0]))){
-					if((str[i][0]=='>')||(str[i][0]=='<')){
-						if (str[i][0]=='<'){
-							if ((f0=open(str[i+1], O_RDONLY, 0777))==-1)
-								perror("Ошибка");
-						}else if(strcmp(str[i], ">>"))
-								f1=open(str[i+1], O_CREAT | O_WRONLY | O_TRUNC, 0777);
-							else
-								f1=open(str[i+1], O_CREAT | O_WRONLY | O_APPEND, 0777);
-						i=i+2;
-					}else 
-						fprintf(stderr, "Ошибка1");
-				}
-				if (!(contrlc(str[i][0]))){
-					if((str[i][0]=='>')||(str[i][0]=='<')){
-						if (str[i][0]=='<'){
-							if (f0==-1){
-								if ((f0=open(str[i+1], O_RDONLY, 0777))==-1)
-									perror("Ошибка");
-							}else 
-								fprintf(stderr, "Ошибка");
-						}else if (f1==-1){
-								if(strcmp(str[i], ">>"))
-									f1=open(str[i+1], O_CREAT | O_WRONLY | O_TRUNC, 0777);
-								else
-									f1=open(str[i+1], O_CREAT | O_WRONLY | O_APPEND, 0777);
-							}else 
-								fprintf(stderr, "Ошибка");
-							i=i+2;
-					}else 
-						fprintf(stderr, "Ошибка2");
-				};
 				int j=0;
 				for(;((str[j]!=NULL)&&(contrlc(str[j][0]))); j++);
-				if((str[j]!=NULL)&&(str[j][0]=='&')){
+				if((str[j]!=NULL)&&(!(strcmp(str[j], "&")))){
 					int p;
 					free(str[j]);
 					str[j]=NULL;
@@ -193,8 +173,68 @@ int main(int argc, char *argv[]){
 							lp++;
 						}
 				}else{
-					conv(&(str[i]), f0, f1);
+					int stat2=1;//1-запуск, 0 - пропуск
+					for(;str[i]!=NULL;){
+						if(stat2){
+							if (!(contrlc(str[i][0]))){
+								if((str[i][0]=='>')||(str[i][0]=='<')){
+									if (str[i][0]=='<'){
+										if ((f0=open(str[i+1], O_RDONLY, 0777))==-1)
+											perror("Ошибка");
+									}else if(strcmp(str[i], ">>"))
+											f1=open(str[i+1], O_CREAT | O_WRONLY | O_TRUNC, 0777);
+										else
+											f1=open(str[i+1], O_CREAT | O_WRONLY | O_APPEND, 0777);
+									i=i+2;
+								}else 
+									fprintf(stderr, "Ошибка1");
+							}
+							if (!(contrlc(str[i][0]))){
+								if((str[i][0]=='>')||(str[i][0]=='<')){
+									if (str[i][0]=='<'){
+										if (f0==-1){
+											if ((f0=open(str[i+1], O_RDONLY, 0777))==-1)
+												perror("Ошибка");
+										}else 
+											fprintf(stderr, "Ошибка");
+									}else if (f1==-1){
+											if(strcmp(str[i], ">>"))
+												f1=open(str[i+1], O_CREAT | O_WRONLY | O_TRUNC, 0777);
+											else
+												f1=open(str[i+1], O_CREAT | O_WRONLY | O_APPEND, 0777);
+										}else 
+											fprintf(stderr, "Ошибка");
+										i=i+2;
+								}else 
+									fprintf(stderr, "Ошибка2");
+							};
+							status=conv(&(str[i]), f0, f1);
+							f0=-1;
+							f1=-1;
+						}
+						for(;((i!=nw-1)&&((str[i]==NULL)||((str[i][0]!='&')&&(str[i][0]!=';')&&(str[i][0]!='(')&&(str[i][0]!=')')&&(strcmp(str[i], "||"))))); i++);	
+						if((str[i]!=NULL)&&(!strcmp(str[i], "&&"))){
+							if(status==0)
+								stat2=1;
+							else
+								stat2=0;
+						}
+						if((str[i]!=NULL)&&(!strcmp(str[i], "||"))){
+							if(status)
+								stat2=1;
+							else
+								stat2=0;
+						}
+						if((str[i]!=NULL)&&(!strcmp(str[i], ";"))){
+							stat2=1;
+						}
+						if (i!=nw-1){
+							i++;
+						}
+					}
 				}
+				
+				
 			}else{
 				if (str[1]==NULL)
 					chdir(home);
